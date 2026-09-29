@@ -1,0 +1,39 @@
+diff --git a/backend/app/core/auth.py b/backend/app/core/auth.py
+index 3fe1dcf..616be3f 100644
+--- a/backend/app/core/auth.py
++++ b/backend/app/core/auth.py
+@@ -18,12 +18,14 @@ def _decode_supabase_jwt(token: str) -> AuthUser:
+     /auth/v1/user (sb.auth.get_user), which was ~60% of p95 on /jobs/for-you.
+     The access token already carries everything we need (sub, email).
+     """
++    # Fail closed: never decode without verifying. Signature, exp and aud are all checked;
++    # the secret is a required setting, so a missing env var stops the app at boot instead.
+     claims = jwt.decode(
+         token,
+-        settings.supabase_jwt_secret or None,
++        settings.supabase_jwt_secret,
+         algorithms=["HS256"],
+         audience="authenticated",
+-        options={"verify_signature": bool(settings.supabase_jwt_secret)},
++        options={"require": ["exp", "sub", "aud"]},
+     )
+     return AuthUser(id=claims["sub"], email=claims.get("email", ""))
+ 
+diff --git a/backend/app/core/config.py b/backend/app/core/config.py
+index b060e1f..02e0cba 100644
+--- a/backend/app/core/config.py
++++ b/backend/app/core/config.py
+@@ -1,3 +1,4 @@
++from pydantic import Field
+ from pydantic_settings import BaseSettings
+ 
+ 
+@@ -5,7 +6,7 @@ class Settings(BaseSettings):
+     supabase_url: str
+     supabase_anon_key: str
+     supabase_service_role_key: str
+-    supabase_jwt_secret: str = ""  # Settings > API > JWT secret (set in prod)
++    supabase_jwt_secret: str = Field(min_length=32)  # required: Settings > API > JWT secret
+     database_url: str
+     openai_api_key: str
+     resend_api_key: str

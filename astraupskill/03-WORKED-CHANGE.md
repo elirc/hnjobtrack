@@ -1,0 +1,11 @@
+# Worked change
+
+The defect is visible in four lines: query `hn_threads`; if a row exists, return its id. That branch is locally efficient but semantically wrong because the row is inserted before comments are fetched. A timeout after the insert creates a durable parent with zero children, and every future run exits before repairing it. The corrected branch keeps the existing id, calls `_fetch_all_comments`, and passes the result to `_import_comments`.
+
+The importer builds rows only when text is nonempty and `parent_id` equals the story id. It writes at most 500 rows per request and calls `upsert(..., on_conflict="thread_id,hn_comment_id", ignore_duplicates=True)`. The same helper is used on first and repeated runs, so behavior does not fork by history. Finally, the thread becomes `parsing`, allowing the downstream parser to process newly restored rows. Duplicate-ignore leaves existing rows untouched, including raw and parsed fields; a future raw-text refresh policy would need separate behavior and tests.
+
+The schema adds `unique(thread_id, hn_comment_id)`, with a guarded migration for existing databases. Without it, the conflict target is not enforceable. The change deliberately leaves network retries, parser retries, and notification deduplication for separate bounded work. That keeps the patch reviewable while establishing a strong acquisition invariant: after a successful fetch, every eligible remote top-level comment has one local row at most.
+
+Before: `if existing.data: return existing.data["id"]`. After: `status = done` returns, while `pending`, `parsing`, or `error` fetch comments and call duplicate-ignore upsert. This distinction is the core CRUD correction.
+
+Notice the implementation does not catch every exception and label the thread error. That omission is intentional for this bounded exercise: the existing caller and operational policy should define error transitions together. A reviewer can still identify the unresolved edge and request a follow-up. Good CRUD work makes both the repaired invariant and the remaining boundary visible instead of claiming that one helper solves the whole pipeline.

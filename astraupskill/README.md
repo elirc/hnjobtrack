@@ -1,0 +1,11 @@
+# HNJOBTRACK CRUD upskill
+
+This course follows one production-shaped correction: a scraper must be safe to retry after a thread row exists but its comments do not. The project uses an HTTP boundary, a Supabase data boundary, and a parser that consumes imported listings. The learning path moves from tracing the existing early return to reviewing an idempotent write. Read each chapter with the staged source open. Run the focused Python tests from `backend` so imports resolve exactly as they do in the small harness.
+
+The key contract is simple: discovering a pending or parsing thread does not prove that its children were imported. A retry therefore refetches comments, keeps only nonempty top-level comments, and inserts on the database key while ignoring duplicates. A completed thread is left untouched, preserving parsed data. The schema constraint is part of the correctness proof; application code alone cannot protect concurrent workers.
+
+Use the trace lab to predict calls before reading the answer. Then inspect the tests and write one additional case that simulates a second batch. The staged change does not exercise a live HN API, Supabase, GPT, or notifications, so verification is deliberately limited to import behavior and fake query interactions.
+
+Source links: [scraper](../backend/app/services/scraper.py), [resume tests](../backend/tests/test_scraper_resume.py), [recovery tests](../backend/tests/test_scraper_recovery.py), [schema](../supabase/schema.sql), and [original scraper snapshot](snapshots/backend/app/services/scraper.py). Before/after anchor: before, `if existing.data: return existing.data["id"]`; after, a non-complete row refetches and calls `_import_comments`, while a complete row returns safely.
+
+Keep a small change journal while studying: record the old branch condition, the new invariant, and the evidence that supports it. This habit makes a review explainable to someone who did not watch the implementation happen. It also prevents a passing unit test from being mistaken for proof that credentials, remote availability, authorization policy, and production migrations were validated.

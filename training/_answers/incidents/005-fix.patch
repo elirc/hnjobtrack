@@ -1,0 +1,121 @@
+diff --git a/backend/app/services/parser.py b/backend/app/services/parser.py
+index ddfbd07..9f3fdac 100644
+--- a/backend/app/services/parser.py
++++ b/backend/app/services/parser.py
+@@ -1,7 +1,13 @@
+ import asyncio
+ import json
++import logging
+ from datetime import datetime, timezone
++from typing import Optional
++
+ from openai import AsyncOpenAI
++from pydantic import BaseModel, ValidationError, field_validator
++
++from app.schemas.jobs import RemoteType, RoleType
+ from app.core.config import settings
+ from app.core.supabase import get_supabase_admin
+ 
+@@ -9,7 +15,7 @@ PARSE_SYSTEM_PROMPT = """You are a job listing parser. Given a raw Hacker News c
+ {
+   "company": "string or null",
+   "role": "string or null (if the post hires for several roles, join them with ' / ')",
+-  "role_type": "full-time | part-time | contract | internship | null (if several apply, list every one comma-separated, e.g. \"full-time, contract\")",
++  "role_type": "full-time | part-time | contract | internship | null (exactly one value: the primary type)",
+   "location": ["array of location strings"],
+   "remote": "yes | no | hybrid | null",
+   "visa_sponsorship": "boolean or null",
+@@ -33,6 +39,45 @@ Rules:
+ - parse_confidence is 0.0–1.0 based on how much information you could extract."""
+ 
+ 
++logger = logging.getLogger(__name__)
++
++
++class ParsedListing(BaseModel):
++    """The contract between the LLM and our schema. Anything that fails it is flagged, never written."""
++
++    company: Optional[str] = None
++    role: Optional[str] = None
++    role_type: Optional[RoleType] = None
++    location: list[str] = []
++    remote: Optional[RemoteType] = None
++    visa_sponsorship: Optional[bool] = None
++    salary_min: Optional[int] = None
++    salary_max: Optional[int] = None
++    salary_currency: Optional[str] = None
++    skills: list[str] = []
++    description: Optional[str] = None
++    apply_url: Optional[str] = None
++    apply_email: Optional[str] = None
++    equity: Optional[bool] = None
++    parse_confidence: Optional[float] = None
++
++    @field_validator("role_type", mode="before")
++    @classmethod
++    def first_valid_role_type(cls, v):
++        # Models drift toward "full-time, contract" even when told not to: keep the first valid value.
++        if isinstance(v, str) and "," in v:
++            for part in (p.strip().lower() for p in v.split(",")):
++                if part in {t.value for t in RoleType}:
++                    return part
++            return None
++        return v
++
++    @field_validator("location", "skills", mode="before")
++    @classmethod
++    def none_to_empty(cls, v):
++        return v or []
++
++
+ async def parse_thread_jobs(thread_id: str):
+     """Parse all unparsed job listings in a thread using GPT-4o-mini."""
+     sb = get_supabase_admin()
+@@ -59,34 +104,19 @@ async def parse_thread_jobs(thread_id: str):
+         results = await asyncio.gather(*tasks, return_exceptions=True)
+ 
+         for job, parse_result in zip(batch, results):
+-            if isinstance(parse_result, Exception):
+-                sb.table("job_listings").update(
+-                    {"is_flagged": True}
+-                ).eq("id", job["id"]).execute()
+-                continue
+-
+-            now = datetime.now(timezone.utc).isoformat()
+-            update_data = {
+-                "company": parse_result.get("company"),
+-                "role": parse_result.get("role"),
+-                "role_type": parse_result.get("role_type"),
+-                "location": parse_result.get("location") or [],
+-                "remote": parse_result.get("remote"),
+-                "visa_sponsorship": parse_result.get("visa_sponsorship"),
+-                "salary_min": parse_result.get("salary_min"),
+-                "salary_max": parse_result.get("salary_max"),
+-                "salary_currency": parse_result.get("salary_currency"),
+-                "skills": parse_result.get("skills") or [],
+-                "description": parse_result.get("description"),
+-                "apply_url": parse_result.get("apply_url"),
+-                "apply_email": parse_result.get("apply_email"),
+-                "equity": parse_result.get("equity"),
+-                "parse_confidence": parse_result.get("parse_confidence"),
+-                "parsed_at": now,
+-                "is_flagged": False,
+-            }
+-
+-            sb.table("job_listings").update(update_data).eq("id", job["id"]).execute()
++            try:
++                if isinstance(parse_result, Exception):
++                    raise parse_result
++                listing = ParsedListing.model_validate(parse_result)
++                update_data = {
++                    **listing.model_dump(mode="json"),
++                    "parsed_at": datetime.now(timezone.utc).isoformat(),
++                    "is_flagged": False,
++                }
++                sb.table("job_listings").update(update_data).eq("id", job["id"]).execute()
++            except Exception as e:  # one bad row must never stop the thread
++                logger.warning("parse failed job=%s err=%s: %s", job["id"], type(e).__name__, str(e)[:200])
++                sb.table("job_listings").update({"is_flagged": True}).eq("id", job["id"]).execute()
+ 
+     sb.table("hn_threads").update({"status": "done"}).eq("id", thread_id).execute()
+ 

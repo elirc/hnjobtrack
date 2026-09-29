@@ -1,0 +1,14 @@
+test_done_thread_performs_no_comment_request_or_write (test_scraper_recovery.RecoveryTests.test_done_thread_performs_no_comment_request_or_write) ... ok
+test_filtering_through_scrape_entry (test_scraper_recovery.RecoveryTests.test_filtering_through_scrape_entry) ... ok
+test_new_thread_imports_pages (test_scraper_recovery.RecoveryTests.test_new_thread_imports_pages) ... ok
+test_no_story_does_not_create_parent (test_scraper_recovery.RecoveryTests.test_no_story_does_not_create_parent) ... ok
+test_partial_batch_retry_preserves_parsed_fields (test_scraper_recovery.RecoveryTests.test_partial_batch_retry_preserves_parsed_fields) ... ok
+test_retry_after_parent_creation_and_http_failure (test_scraper_recovery.RecoveryTests.test_retry_after_parent_creation_and_http_failure) ... ok
+test_completed_thread_is_not_refetched (test_scraper_resume.ResumeImportTests.test_completed_thread_is_not_refetched) ... ok
+test_existing_thread_is_refetched_and_upserted (test_scraper_resume.ResumeImportTests.test_existing_thread_is_refetched_and_upserted) ... ok
+test_import_filters_nested_and_empty_comments (test_scraper_resume.ResumeImportTests.test_import_filters_nested_and_empty_comments) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.619s
+
+OK

@@ -1,0 +1,9 @@
+# Solutions and review
+
+For the 501-comment exercise, the expected shape is two upsert calls: 500 and 1. The exact batching mechanism can vary, but the conflict target must remain `thread_id,hn_comment_id`, and the rows must be filtered before batching. A missing parent id should be rejected because the importer cannot establish that the comment belongs to this story. Treating missing scope as eligible would widen a remote data boundary accidentally.
+
+A strong review says the helper is shared by first-run and retry paths, duplicate-ignore preserves parser-owned columns, and the guarded database migration supplies the conflict constraint. It also flags a limitation: the fake tests establish the call contract, while live database merge and race behavior remain unverified. The current schema does not record fetch checkpoints or error detail, so operators cannot distinguish “no comments” from “remote outage” from the thread row alone. That is a valid future improvement, not a reason to blur this patch with notification work.
+
+Use this rubric: identity and uniqueness (30%), filtering and authorization scope (25%), preservation of existing data (20%), failure and retry reasoning (15%), tests that observe behavior (10%). A solution that merely changes `return` to `pass` fails because it still needs an idempotent write. A solution that deletes all children then reinserts may appear correct but risks data loss and parsed-field churn; prefer the upsert contract unless a full replacement is explicitly required.
+
+During review, ask the author to demonstrate the failure trace, not just show a green test. The smallest convincing demonstration starts with a durable parent and no child, invokes the retry path, and inspects the recorded upsert payload. Then check the SQL diff for the matching uniqueness rule. This sequence catches the common mistake of adding an application conflict target that the database cannot actually honor.

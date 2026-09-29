@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "executedTests": 9,
+  "checks": [
+    {
+      "project": "_Organized Desktop/08 App And Product Projects/HNJOBTRACK",
+      "id": "fb1267045788",
+      "command": [
+        "python",
+        "-X",
+        "utf8",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_scraper*.py",
+        "-v"
+      ],
+      "cwd": "C:\\Users\\Owner\\Desktop\\AstraOrganized2\\astra-remaining-improvements\\stage\\fb1267045788\\backend",
+      "environmentOverrides": {},
+      "startedAt": "2026-09-21T23:42:57.608787+00:00",
+      "status": "complete",
+      "log": "astra-crud-b01-all-scraper.log",
+      "pid": 16492,
+      "exitCode": 0,
+      "passed": true,
+      "finishedAt": "2026-09-21T23:43:27.821786+00:00",
+      "elapsedSeconds": 30.17
+    }
+  ],
+  "limits": [
+    "Focused tests use fake database and HTTP module boundaries.",
+    "Live service and migration execution were not performed."
+  ]
+}

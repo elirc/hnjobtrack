@@ -1,0 +1,9 @@
+{
+  "_about": "Hand-written stand-ins shaped like gpt-4o-mini JSON-mode answers to the PARSE_SYSTEM_PROMPT on training/incidents/005-multi-role-type-prompt. Not real API output; no paid API was called. Keys are the HN comment ids used in the regression test.",
+  "42000101": {"company": "Acme", "role": "Backend Engineer", "role_type": "full-time", "location": ["Remote (US)"], "remote": "yes", "skills": ["Python", "Postgres"], "parse_confidence": 0.93},
+  "42000102": {"company": "Globex", "role": "Senior Backend Engineer / Frontend Engineer", "role_type": "full-time, contract", "location": ["New York, NY"], "remote": "hybrid", "skills": ["Go", "React"], "parse_confidence": 0.88},
+  "42000103": {"company": "Initech", "role": "Data Engineer", "role_type": "full-time", "location": ["Austin, TX"], "remote": "no", "skills": ["dbt", "Snowflake"], "parse_confidence": 0.9},
+  "42000104": {"company": "Hooli", "role": "ML Engineer / Research Intern", "role_type": "full-time, internship", "location": ["Mountain View, CA"], "remote": "no", "skills": ["PyTorch"], "parse_confidence": 0.85},
+  "42000105": {"company": "Umbrella", "role": "SRE", "role_type": "contract", "location": ["Remote (EU)"], "remote": "yes", "skills": ["Kubernetes", "Terraform"], "parse_confidence": 0.91},
+  "42000106": {"company": "Stark", "role": "Mobile Engineer", "role_type": "full-time", "location": ["Remote"], "remote": "yes", "skills": ["Swift", "Kotlin"], "parse_confidence": 0.87}
+}

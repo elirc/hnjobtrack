@@ -1,0 +1,9 @@
+# Practice
+
+Begin with prediction. Given comments `a` and `b` for story 42, where `a` is top-level and `b` has parent 99, predict the one row and its conflict key before running the test. Then change the fake input so `a` appears twice with different raw text. Explain why one upsert request is still safe and what database rule makes concurrent requests safe.
+
+Next, write a test for a 501-comment input. Do not assert implementation trivia such as a particular loop variable. Assert that two upsert calls occur, that the first has 500 rows, and that every row carries the requested thread id. Then write a test where a comment lacks `parent_id`; decide whether the importer should reject it, and justify that decision from the data boundary. Finally, trace a crash after the parent insert but before the first comment write. List the durable rows, the next-run reads, and the expected final invariant.
+
+For independent practice, propose a parser retry policy. Should a `done` thread be reparsed after an acquisition retry? Which rows qualify? Identify the authorization boundary around manual triggering and the data boundary around raw HN text. Review your own solution with four questions: Is logical identity explicit? Is repeated execution safe? Are unrelated fields preserved? Can a reviewer observe failure without a live external service? Keep each answer tied to a line or invariant in the staged source.
+
+Graduation challenge: design a fixture with 1,001 eligible comments, two duplicate ids, one nested reply, and one empty body. Predict the final row count and number of batches, then implement assertions without depending on UUID values. A senior answer also explains how two workers could interleave and why the database constraint, rather than a preflight read, is the final authority. Document any assumption about upsert merge semantics before proposing a production rollout.

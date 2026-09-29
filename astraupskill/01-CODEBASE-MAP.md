@@ -1,0 +1,9 @@
+# Codebase map
+
+Start at `backend/app/api/admin.py`. The admin endpoint schedules `_run_scrape_pipeline`, which calls `scrape_latest_thread` and then `parse_thread_jobs`. The scheduler in `main.py` follows the same sequence monthly. This means the scraper owns acquisition and CRUD insertion, while the parser owns interpretation of rows already present. Notifications happen after parsing elsewhere and are outside this change.
+
+Inside `services/scraper.py`, the HTTP client first searches for one latest story. The story supplies an HN post id and title. The Supabase client then looks for the local thread by its unique HN id. The old branch returned the local id immediately. The new branch treats that row as a resumable checkpoint: it fetches all comment pages, delegates filtering and writes to `_import_comments`, marks the thread parsing, and returns the same id. The first-run branch still inserts the checkpoint before doing network work, then calls the same importer.
+
+The database map matters. `hn_threads.hn_post_id` prevents duplicate parent records. `job_listings` stores the child comment id, raw text, and parsed columns. The added composite uniqueness rule makes repeated imports safe. A junior reviewer should ask where ownership changes: HTTP data is untrusted, parent ids define scope, and the database enforces child identity. A senior reviewer should also ask whether a worker crash leaves a state that the next run can continue from. Here, the pending thread row is intentionally useful state rather than proof of completion.
+
+When you map a new CRUD path, draw the arrows from caller to boundary to durable state, then annotate every early return. Early returns often hide an assumption such as “row exists means work completed.” In this project that assumption was false. The map is useful precisely because it shows the temporal order: parent creation precedes child acquisition, so the parent must be treated as a checkpoint and revisited.

@@ -1,0 +1,101 @@
+diff --git a/backend/app/api/saved.py b/backend/app/api/saved.py
+index 34ee30e..7a99d3f 100644
+--- a/backend/app/api/saved.py
++++ b/backend/app/api/saved.py
+@@ -18,7 +18,7 @@ router = APIRouter(prefix="/jobs", tags=["saved"])
+ 
+ @router.post("/{job_id}/save", response_model=SavedJobResponse)
+ def save_job(job_id: str, body: SaveJobRequest, user=Depends(get_current_user), db=Depends(get_user_db)):
+-    existing = db.table("saved_jobs").select("*").eq("job_id", job_id).execute()
++    existing = db.table("saved_jobs").select("*").eq("user_id", user.id).eq("job_id", job_id).execute()
+     if existing.data:
+         raise HTTPException(status_code=409, detail="Job already saved")
+ 
+@@ -38,8 +38,8 @@ def save_job(job_id: str, body: SaveJobRequest, user=Depends(get_current_user),
+ 
+ 
+ @router.put("/{job_id}/save", response_model=SavedJobResponse)
+-def update_saved_job(job_id: str, body: UpdateSavedJobRequest, db=Depends(get_user_db)):
+-    existing = db.table("saved_jobs").select("*").eq("job_id", job_id).execute()
++def update_saved_job(job_id: str, body: UpdateSavedJobRequest, user=Depends(get_current_user), db=Depends(get_user_db)):
++    existing = db.table("saved_jobs").select("*").eq("user_id", user.id).eq("job_id", job_id).execute()
+     if not existing.data:
+         raise HTTPException(status_code=404, detail="Saved job not found")
+ 
+@@ -52,22 +52,24 @@ def update_saved_job(job_id: str, body: UpdateSavedJobRequest, db=Depends(get_us
+     if not updates:
+         return _map_saved(existing.data[0])
+ 
+-    result = db.table("saved_jobs").update(updates).eq("job_id", job_id).execute()
++    result = db.table("saved_jobs").update(updates).eq("user_id", user.id).eq("job_id", job_id).execute()
+     return _map_saved(result.data[0])
+ 
+ 
+ @router.delete("/{job_id}/save")
+-def unsave_job(job_id: str, db=Depends(get_user_db)):
+-    db.table("saved_jobs").delete().eq("job_id", job_id).execute()
++def unsave_job(job_id: str, user=Depends(get_current_user), db=Depends(get_user_db)):
++    db.table("saved_jobs").delete().eq("user_id", user.id).eq("job_id", job_id).execute()
+     return {"ok": True}
+ 
+ 
+ @router.get("/saved/all", response_model=list[SavedJobResponse])
+ def list_saved_jobs(
+     status: Optional[SavedStatus] = Query(None),
++    user=Depends(get_current_user),
+     db=Depends(get_user_db),
+ ):
+-    query = db.table("saved_jobs").select("*, job_listings(*)").order("saved_at", desc=True)
++    # Belt and braces: RLS scopes rows to the caller AND the query says so explicitly.
++    query = db.table("saved_jobs").select("*, job_listings(*)").eq("user_id", user.id).order("saved_at", desc=True)
+     if status:
+         query = query.eq("status", status.value)
+ 
+diff --git a/backend/app/core/auth.py b/backend/app/core/auth.py
+index 9d5f784..a6d769e 100644
+--- a/backend/app/core/auth.py
++++ b/backend/app/core/auth.py
+@@ -30,8 +30,12 @@ async def get_optional_user(authorization: str = Header(None)):
+ 
+ 
+ async def get_user_db(authorization: str = Header(None), user=Depends(get_current_user)):
+-    """Supabase client scoped to the authenticated caller (RLS enforced)."""
+-    return get_supabase_as_user(authorization.split(" ", 1)[1])
++    """PostgREST client scoped to the authenticated caller (RLS enforced), closed after the request."""
++    client = get_supabase_as_user(authorization.split(" ", 1)[1])
++    try:
++        yield client
++    finally:
++        client.session.close()
+ 
+ 
+ async def require_admin(x_api_key: str = Header(None)):
+diff --git a/backend/app/core/supabase.py b/backend/app/core/supabase.py
+index e07b707..b9ab647 100644
+--- a/backend/app/core/supabase.py
++++ b/backend/app/core/supabase.py
+@@ -1,3 +1,4 @@
++from postgrest import SyncPostgrestClient
+ from supabase import create_client, Client
+ from app.core.config import settings
+ 
+@@ -18,12 +19,15 @@ def get_supabase_public() -> Client:
+     return supabase_public
+ 
+ 
+-def get_supabase_as_user(access_token: str) -> Client:
++def get_supabase_as_user(access_token: str) -> SyncPostgrestClient:
+     """Anon-key client that sends the caller's JWT, so PostgREST applies RLS as that user.
+ 
+     Use this for user-owned tables (saved_jobs, user_preferences, profiles): even if a
+     handler forgets a user_id filter, Postgres only returns the caller's rows.
+     """
+-    client = get_supabase_public()
+-    client.postgrest.auth(access_token)
+-    return client
++    # A NEW client per request: auth() mutates the client's session headers, so a shared
++    # client would send whichever user's token was set last (cross-user data leak).
++    return SyncPostgrestClient(
++        f"{settings.supabase_url}/rest/v1",
++        headers={"apikey": settings.supabase_anon_key, "Authorization": f"Bearer {access_token}"},
++    )

@@ -1,0 +1,130 @@
+diff --git a/backend/app/schemas/base.py b/backend/app/schemas/base.py
+deleted file mode 100644
+index 0e2d397..0000000
+--- a/backend/app/schemas/base.py
++++ /dev/null
+@@ -1,13 +0,0 @@
+-from pydantic import BaseModel, ConfigDict
+-from pydantic.alias_generators import to_camel
+-
+-
+-class ApiModel(BaseModel):
+-    """Base for every API payload.
+-
+-    JSON on the wire is camelCase (JS/TS convention, and what the mobile client
+-    expects); Python code keeps snake_case attribute names. populate_by_name keeps
+-    snake_case request bodies working, so existing callers are unaffected.
+-    """
+-
+-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+diff --git a/backend/app/schemas/jobs.py b/backend/app/schemas/jobs.py
+index 9bde7a8..d7a1f25 100644
+--- a/backend/app/schemas/jobs.py
++++ b/backend/app/schemas/jobs.py
+@@ -1,4 +1,4 @@
+-from app.schemas.base import ApiModel
++from pydantic import BaseModel
+ from typing import Optional
+ from datetime import datetime
+ from enum import Enum
+@@ -17,7 +17,7 @@ class RoleType(str, Enum):
+     internship = "internship"
+ 
+ 
+-class JobListingResponse(ApiModel):
++class JobListingResponse(BaseModel):
+     id: str
+     thread_id: str
+     hn_comment_id: str
+@@ -41,14 +41,14 @@ class JobListingResponse(ApiModel):
+     match_score: Optional[float] = None
+ 
+ 
+-class JobListResponse(ApiModel):
++class JobListResponse(BaseModel):
+     jobs: list[JobListingResponse]
+     total: int
+     page: int
+     per_page: int
+ 
+ 
+-class JobFilters(ApiModel):
++class JobFilters(BaseModel):
+     search: Optional[str] = None
+     remote: Optional[RemoteType] = None
+     role_type: Optional[RoleType] = None
+diff --git a/backend/app/schemas/profile.py b/backend/app/schemas/profile.py
+index 51e122b..bc56664 100644
+--- a/backend/app/schemas/profile.py
++++ b/backend/app/schemas/profile.py
+@@ -1,4 +1,4 @@
+-from app.schemas.base import ApiModel
++from pydantic import BaseModel
+ from typing import Optional
+ from enum import Enum
+ 
+@@ -9,7 +9,7 @@ class NotifyFrequency(str, Enum):
+     weekly = "weekly"
+ 
+ 
+-class ProfileResponse(ApiModel):
++class ProfileResponse(BaseModel):
+     id: str
+     email: str
+     display_name: Optional[str] = None
+@@ -17,7 +17,7 @@ class ProfileResponse(ApiModel):
+     notify_frequency: NotifyFrequency = NotifyFrequency.weekly
+ 
+ 
+-class PreferencesResponse(ApiModel):
++class PreferencesResponse(BaseModel):
+     id: Optional[str] = None
+     roles: list[str] = []
+     locations: list[str] = []
+@@ -28,13 +28,13 @@ class PreferencesResponse(ApiModel):
+     excluded_companies: list[str] = []
+ 
+ 
+-class UpdateProfileRequest(ApiModel):
++class UpdateProfileRequest(BaseModel):
+     display_name: Optional[str] = None
+     notify_enabled: Optional[bool] = None
+     notify_frequency: Optional[NotifyFrequency] = None
+ 
+ 
+-class UpdatePreferencesRequest(ApiModel):
++class UpdatePreferencesRequest(BaseModel):
+     roles: Optional[list[str]] = None
+     locations: Optional[list[str]] = None
+     remote_only: Optional[bool] = None
+diff --git a/backend/app/schemas/saved.py b/backend/app/schemas/saved.py
+index a182115..dc90a01 100644
+--- a/backend/app/schemas/saved.py
++++ b/backend/app/schemas/saved.py
+@@ -1,4 +1,4 @@
+-from app.schemas.base import ApiModel
++from pydantic import BaseModel
+ from typing import Optional
+ from datetime import datetime
+ from enum import Enum
+@@ -13,17 +13,17 @@ class SavedStatus(str, Enum):
+     offer = "offer"
+ 
+ 
+-class SaveJobRequest(ApiModel):
++class SaveJobRequest(BaseModel):
+     notes: Optional[str] = None
+     status: SavedStatus = SavedStatus.saved
+ 
+ 
+-class UpdateSavedJobRequest(ApiModel):
++class UpdateSavedJobRequest(BaseModel):
+     notes: Optional[str] = None
+     status: Optional[SavedStatus] = None
+ 
+ 
+-class SavedJobResponse(ApiModel):
++class SavedJobResponse(BaseModel):
+     id: str
+     job_id: str
+     saved_at: datetime
