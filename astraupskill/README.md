@@ -4,7 +4,7 @@ This course follows one production-shaped correction: a scraper must be safe to 
 
 The key contract is simple: discovering a pending or parsing thread does not prove that its children were imported. A retry therefore refetches comments, keeps only nonempty top-level comments, and inserts on the database key while ignoring duplicates. A completed thread is left untouched, preserving parsed data. The schema constraint is part of the correctness proof; application code alone cannot protect concurrent workers.
 
-Use the trace lab to predict calls before reading the answer. Then inspect the tests and write one additional case that simulates a second batch. The staged change does not exercise a live HN API, Supabase, GPT, or notifications, so verification is deliberately limited to import behavior and fake query interactions.
+Use the trace lab to predict calls before reading the answer. Then read both test modules (the second-batch interruption is already covered in `test_scraper_recovery.py`) and work the Goal/Check exercises in `05-PRACTICE.md`. The staged change does not exercise a live HN API, Supabase, GPT, or notifications, so verification is deliberately limited to import behavior and fake query interactions.
 
 Source links: [scraper](../backend/app/services/scraper.py), [resume tests](../backend/tests/test_scraper_resume.py), [recovery tests](../backend/tests/test_scraper_recovery.py), [schema](../supabase/schema.sql), and [original scraper snapshot](snapshots/backend/app/services/scraper.py). Before/after anchor: before, `if existing.data: return existing.data["id"]`; after, a non-complete row refetches and calls `_import_comments`, while a complete row returns safely.
 

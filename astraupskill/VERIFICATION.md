@@ -1,5 +1,7 @@
 # Verification
 
+> Status note (2026-10-06): this is the original 2026-09-21 record. Re-running `python -X utf8 -m unittest discover -s tests -p "test_scraper*.py" -v` from `backend` with Python 3.13 still gives 9 tests, OK. The `cwd` in `evidence/results.json` is the original author's staging path, not a path in this repo.
+
 The staged regression commands passed: the resume suite ran 3 tests and the recovery suite ran 6 tests, for 9 total. The tests use fake HTTP/database-adjacent objects and do not contact Algolia, Supabase, GPT, email, or notifications. They verify new-parent creation, pagination, failure after parent creation, partial-batch retry, parsed-field preservation, completed-thread early return, filtering/error handling, and no-story handling. The schema was reviewed to ensure the conflict target has a guarded migration.
 
 This evidence does not establish that the installed Supabase client accepts every fake call shape, that the remote API’s pagination metadata is complete, or that an interrupted transaction leaves exactly the assumed parent row. Those limits should guide the next integration check. A reviewer can run the test without installing third-party dependencies because the test stubs `httpx` and the Supabase module before importing the service. The checks ran in an isolated copy; the report records delivery separately and preserves exact original source snapshots.
